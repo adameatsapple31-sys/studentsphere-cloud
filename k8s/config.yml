@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-cloud-config
+  namespace: student-cloud
+data:
+  CORS_ORIGINS: "https://your-frontend.example.com"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: student-cloud-secrets
+  namespace: student-cloud
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE"
+  JWT_SECRET: "replace-before-applying"
+

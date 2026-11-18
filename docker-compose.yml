@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: student_cloud
+      POSTGRES_USER: student
+      POSTGRES_PASSWORD: student
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U student -d student_cloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [student-net]
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://student:student@postgres:5432/student_cloud
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me}
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+    ports: ["8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+    networks: [student-net]
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000/api/v1
+    ports: ["3000:80"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [student-net]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [api]
+    networks: [student-net]
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+    networks: [student-net]
+
+volumes:
+  postgres_data:
+
+networks:
+  student-net:
+    driver: bridge
+

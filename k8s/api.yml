@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-cloud-api
+  namespace: student-cloud
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: student-cloud-api }
+  template:
+    metadata:
+      labels: { app: student-cloud-api }
+    spec:
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: api
+          image: ghcr.io/YOUR_USERNAME/student-cloud-api:latest
+          ports: [{ containerPort: 8000 }]
+          envFrom:
+            - configMapRef: { name: student-cloud-config }
+            - secretRef: { name: student-cloud-secrets }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8000 }
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-cloud-api
+  namespace: student-cloud
+spec:
+  selector: { app: student-cloud-api }
+  ports: [{ port: 80, targetPort: 8000 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: student-cloud-api
+  namespace: student-cloud
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: student-cloud-api
+  minReplicas: 2
+  maxReplicas: 8
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }
+
