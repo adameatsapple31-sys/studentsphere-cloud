@@ -12,5 +12,6 @@ RUN addgroup --system app && adduser --system --ingroup app app
 USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+# Render (and most cloud platforms) tell the app which port to use through $PORT.
+# Locally (Docker Compose / Kubernetes) PORT is not set, so it falls back to 8000.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

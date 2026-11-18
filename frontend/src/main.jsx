@@ -8,9 +8,12 @@ import {
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// In production the API address MUST come from VITE_API_URL (set in Vercel).
+// The localhost fallback is only used while developing on your own laptop.
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : '');
 
 async function request(path, options = {}) {
+  if (!API) throw new Error('Backend URL is not configured (VITE_API_URL is missing in this deployment).');
   const token = localStorage.getItem('ss_token');
   const response = await fetch(`${API}${path}`, {
     ...options,

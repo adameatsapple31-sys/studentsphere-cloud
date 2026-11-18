@@ -1,23 +1,25 @@
-databases:
-  - name: studentsphere-postgres
-    databaseName: student_cloud
-    user: student_cloud
-    plan: free
-
+# Render Blueprint for the StudentSphere backend (FastAPI in Docker).
+# The database is hosted on Neon (free, does not expire), so no Render database is created here.
+# Values marked "sync: false" are secrets/settings you type into the Render dashboard.
+# They are never stored in GitHub.
 services:
   - type: web
     name: studentsphere-api
     runtime: docker
-    rootDir: backend
     plan: free
-    healthCheckPath: /health/ready
+    region: singapore
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    # /health/live does not touch the database, so Render's frequent health checks
+    # will not keep the Neon database awake 24x7 (which would use up its free compute).
+    healthCheckPath: /health/live
+    autoDeploy: true
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: studentsphere-postgres
-          property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        sync: false
       - key: CORS_ORIGINS
-        value: https://YOUR-VERCEL-PROJECT.vercel.app
-
+        sync: false
